@@ -7,6 +7,8 @@
 # Added a display box to cache messages created during the auto_mount and display them after
 # the main grid is displayed.
 # refactored some code in the mount and automount functions
+# consolidated the  mounting to  mount_network_share
+
 from typing import Union
 import tkinter as tk
 from tkinter import messagebox, filedialog
