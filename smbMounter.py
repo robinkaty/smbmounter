@@ -42,7 +42,7 @@ def show_message(*args, **kwargs):
 def beephappy():
     if platform.system() == "Windows":
         import winsound
-        winsound.Beep(1998, 500) # type: ignore
+        winsound.Beep(1998, 500) 
     elif platform.system() == "Darwin":
         import os
 
@@ -51,6 +51,27 @@ def beephappy():
         import os
 
         os.system("beep")
+
+def beepsad():
+    if platform.system() == "Windows":
+        import winsound
+
+        winsound.Beep(1000, 200) 
+        winsound.Beep(500, 200) 
+        winsound.Beep(1000, 200) 
+        winsound.Beep(500, 200) 
+        winsound.Beep(1000, 200) 
+    elif platform.system() == "Darwin":
+        import os
+
+        os.system("afplay /System/Library/Sounds/Basso.aiff")
+    elif platform.system() == "Linux":
+        import os
+
+        os.system("beep")
+        os.system("beep")
+        os.system("beep")
+
 
 def mount_network_share(share, server_name, mount_point, protocol, user=None, password=None):
     system = platform.system().lower()
@@ -91,25 +112,6 @@ def mount_network_share(share, server_name, mount_point, protocol, user=None, pa
 # mount_network_share("smb://server/share", "/mnt/mountpoint", "smb", "username", "password")
 # mount_network_share("nfs://server/share", "/mnt/mountpoint", "nfs")
 
-def beepsad():
-    if platform.system() == "Windows":
-        import winsound
-
-        winsound.Beep(1000, 200) # type: ignore
-        winsound.Beep(500, 200) # type: ignore
-        winsound.Beep(1000, 200) # type: ignore
-        winsound.Beep(500, 200) # type: ignore
-        winsound.Beep(1000, 200) # type: ignore
-    elif platform.system() == "Darwin":
-        import os
-
-        os.system("afplay /System/Library/Sounds/Basso.aiff")
-    elif platform.system() == "Linux":
-        import os
-
-        os.system("beep")
-        os.system("beep")
-        os.system("beep")
 
 
 
