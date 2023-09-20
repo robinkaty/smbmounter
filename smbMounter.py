@@ -54,7 +54,7 @@ def beephappy():
 
 def beepsad():
     if platform.system() == "Windows":
-        import winsound
+        import winsound # sourcery skip
 
         winsound.Beep(1000, 200) 
         winsound.Beep(500, 200) 
@@ -73,7 +73,7 @@ def beepsad():
         os.system("beep")
 
 
-def mount_network_share(share, server_name, mount_point, protocol, user=None, password=None):
+def mount_network_share(share, server_name, mount_point, protocol, user=None, password=None): # sourcery skip
     system = platform.system().lower()
     
     if protocol.lower() == "smb":
