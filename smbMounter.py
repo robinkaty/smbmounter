@@ -8,6 +8,7 @@
 # the main grid is displayed.
 # refactored some code in the mount and automount functions
 # consolidated the  mounting to  mount_network_share
+# added  .tolower() to  protocol test
 
 
 from typing import Union
