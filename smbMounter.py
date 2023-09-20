@@ -9,6 +9,7 @@
 # refactored some code in the mount and automount functions
 # consolidated the  mounting to  mount_network_share
 
+
 from typing import Union
 import tkinter as tk
 from tkinter import messagebox, filedialog
@@ -54,7 +55,7 @@ def beephappy():
 def mount_network_share(share, server_name, mount_point, protocol, user=None, password=None):
     system = platform.system().lower()
     
-    if protocol == "smb":
+    if protocol.lower() == "smb":
         if system == "windows":
             # Windows command to mount SMB share
             mount_command = f"net use {mount_point} \\\\{server_name}\\{share} {password} /user:{user}\\{password}" if user else f"net use {mount_point} \\\\{server_name}\\{share}"
@@ -66,7 +67,7 @@ def mount_network_share(share, server_name, mount_point, protocol, user=None, pa
             mount_command = f"mount -t cifs //{share} {mount_point} -o username={user},password={password}" if user and password else f"mount -t cifs //{server_name}/{share} {mount_point}"
         else:
             raise NotImplementedError(f"Unsupported operating system: {system}")
-    elif protocol == "nfs":
+    elif protocol.lower() == "nfs":
         if system == "windows":
             raise NotImplementedError("NFS is not supported on Windows")
         elif system == "darwin":
@@ -378,14 +379,13 @@ class SmbManager(tk.Frame):
             return
 
         if not os.path.exists(mount_point):
-            create_dir = messagebox.askyesno(
+            if create_dir := messagebox.askyesno(
                 "Mount",
                 f"The MountPoint directory '{mount_point}' for '{share}' does not exist. Do you want to create it?",
-            )
-            if create_dir:
+            ):
                 try:
                     os.makedirs(mount_point)
-                except:
+                except Exception:
                     #os.system('afplay /System/Library/Sounds/Basso.aiff')
                     beepsad()
                     return
@@ -395,12 +395,12 @@ class SmbManager(tk.Frame):
             beepsad()
             return
         try:
-            mount_network_share(share, server_name, mount_point, fstype, user=None, password=None)
+            mount_network_share(share, server_name, mount_point, fstype, user, password)
             beephappy()
             #messagebox.showinfo("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' was successful.")
             self.add_message(f"The {fstype} mount for '{server_name}:{share} {mount_point}' was successful.")
 
-        except:
+        except Exception:
             #os.system('afplay /System/Library/Sounds/Basso.aiff')
             beepsad()
             self.add_message(f"The {fstype} mount for '{server_name}:{share}' failed with error: {e}.")
@@ -459,14 +459,13 @@ class SmbManager(tk.Frame):
             return
 
         if not os.path.exists(mount_point):
-            create_dir = messagebox.askyesno(
+            if create_dir := messagebox.askyesno(
                 "Mount",
                 f"The MountPoint directory '{mount_point}' for '{share}' does not exist. Do you want to create it?",
-            )
-            if create_dir:
+            ):
                 try:
                     os.makedirs(mount_point)
-                except:
+                except Exception:
                     #os.system('afplay /System/Library/Sounds/Basso.aiff')
                     beepsad()
                     return
@@ -480,7 +479,7 @@ class SmbManager(tk.Frame):
             mount_network_share(share, server_name, mount_point, fstype, user=None, password=None)
             beephappy()
             messagebox.showinfo("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' was successful.")
-        except:
+        except Exception:
             #os.system('afplay /System/Library/Sounds/Basso.aiff')
             beepsad()
             messagebox.showerror("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' failed with an error: ")
