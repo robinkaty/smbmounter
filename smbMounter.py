@@ -8,16 +8,15 @@
 # the main grid is displayed.
 # refactored some code in the mount and automount functions
 # consolidated the  mounting to  mount_network_share
-# added  .tolower() to  protocol test
 
 
 from typing import Union
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import messagebox, filedialog, ttk
 import subprocess
 import os
 import sys
-from tkinter import ttk
+#from tkinter import ttk
 import tkinter.font as tkfont
 import platform
 
@@ -43,7 +42,7 @@ def show_message(*args, **kwargs):
 def beephappy():
     if platform.system() == "Windows":
         import winsound
-        winsound.Beep(1998, 500) 
+        winsound.Beep(1998, 500) # type: ignore
     elif platform.system() == "Darwin":
         import os
 
@@ -53,15 +52,80 @@ def beephappy():
 
         os.system("beep")
 
+def get_supported_systems_for_protocol(configurations, protocol):
+    # Check if the specified protocol is supported
+#    if protocol not in configurations:
+#        raise ValueError(f"Unsupported protocol: {protocol}")
+
+    # Get the systems that support the specified protocol
+    supported_systems = list(configurations[protocol.lower()].keys())
+    systems_str = ", ".join(supported_systems)
+
+    return systems_str
+
+def mount_network_share(share, server_name, mount_point, protocol, user, password, auto_mount=False):
+    system = platform.system().lower()
+    
+    # Define configurations for different protocols and operating systems
+    configurations = {
+        "smb": {
+            "windows": (f"net use {mount_point} \\\\{server_name}\\{share} {password} /user:{user}\\{password}" if user else f"net use {mount_point} \\\\{server_name}\\{share}"),
+            "darwin": (f"mount -t smbfs //{user}:{password}@{server_name}/{share} {mount_point}" if user and password else f"mount -t smbfs //{server_name}/{share} {mount_point}"),
+            "linux": (f"mount -t cifs //{share} {mount_point} -o username={user},password={password}" if user and password else f"mount -t cifs //{server_name}/{share} {mount_point}")
+        },
+        "nfs": {   
+            "darwin": f"mount -t nfs -o vers=4.0 {server_name}:{share} {mount_point}",
+            "linux": f"mount -t nfs {server_name}:{share} {mount_point}"
+        }
+    }
+    
+    # Check if the protocol is supported
+    if protocol.lower() not in configurations:
+         # Get the keys (protocols) from the top-level dictionary
+        supported_protocols = list(configurations.keys())
+        # Create a comma-separated string of supported protocols
+        protocols_str = ", ".join(supported_protocols)     
+        raise ValueError(f"Unsupported protocol {protocol}. Supported protocols are: {protocols_str}.")
+    
+    # Check if the system is supported for the given protocol
+    #supported_systems = get_supported_systems_for_protocol(configurations, protocol)
+
+  
+    if system not in configurations[protocol.lower()]:
+        # Get the systems for the specified protocol
+        # Get the values to the left of ":" (e.g., "darwin", "linux")
+        supported_systems = get_supported_systems_for_protocol(configurations, protocol)
+        raise ValueError(f"Unsupported system {system}. Supported Systems are: {supported_systems}.")
+        #raise NotImplementedError(f"Unsupported operating system: {system}")
+    
+    mount_command = configurations[protocol.lower()][system]
+
+    try:
+        subprocess.run(mount_command, shell=True, check=True)
+        #print(f"{protocol.upper()} share mounted at {mount_point}")
+    except subprocess.CalledProcessError as e:
+        #show_message(f"{mount_command} failed with Error: {e}")
+        if e.returncode == 64:
+            error_str = f"The Network share is no longer availble {share} : {e}"
+            raise SystemError (f"Error: {error_str}")
+        else:
+            error_str = f"{e}"
+            raise SystemError (f"Error: {error_str}")
+
+
+# Example usage:
+# mount_network_share("smb://server/share", "/mnt/mountpoint", "smb", "username", "password")
+# mount_network_share("nfs://server/share", "/mnt/mountpoint", "nfs")
+
 def beepsad():
     if platform.system() == "Windows":
-        import winsound # sourcery skip
+        import winsound
 
-        winsound.Beep(1000, 200) 
-        winsound.Beep(500, 200) 
-        winsound.Beep(1000, 200) 
-        winsound.Beep(500, 200) 
-        winsound.Beep(1000, 200) 
+        winsound.Beep(1000, 200) # type: ignore
+        winsound.Beep(500, 200) # type: ignore
+        winsound.Beep(1000, 200) # type: ignore
+        winsound.Beep(500, 200) # type: ignore
+        winsound.Beep(1000, 200) # type: ignore
     elif platform.system() == "Darwin":
         import os
 
@@ -72,47 +136,6 @@ def beepsad():
         os.system("beep")
         os.system("beep")
         os.system("beep")
-
-
-def mount_network_share(share, server_name, mount_point, protocol, user=None, password=None): # sourcery skip
-    system = platform.system().lower()
-    
-    if protocol.lower() == "smb":
-        if system == "windows":
-            # Windows command to mount SMB share
-            mount_command = f"net use {mount_point} \\\\{server_name}\\{share} {password} /user:{user}\\{password}" if user else f"net use {mount_point} \\\\{server_name}\\{share}"
-        elif system == "darwin":
-            # macOS command to mount SMB share
-            mount_command = f"mount -t smbfs //{user}:{password}@{server_name}/{share} {mount_point}" if user and password else f"mount -t smbfs //{server_name}/{share} {mount_point}"
-        elif system == "linux":
-            # Linux command to mount SMB share
-            mount_command = f"mount -t cifs //{share} {mount_point} -o username={user},password={password}" if user and password else f"mount -t cifs //{server_name}/{share} {mount_point}"
-        else:
-            raise NotImplementedError(f"Unsupported operating system: {system}")
-    elif protocol.lower() == "nfs":
-        if system == "windows":
-            raise NotImplementedError("NFS is not supported on Windows")
-        elif system == "darwin":
-            # macOS command to mount NFS share
-            mount_command = f"mount -t nfs -o vers=4.0 {server_name}:{share} {mount_point}"
-        elif system == "linux":
-            # Linux command to mount NFS share
-            mount_command = f"mount -t nfs {server_name}:{share} {mount_point}"
-        else:
-            raise NotImplementedError(f"Unsupported operating system: {system}")
-    else:
-        raise ValueError("Unsupported protocol. Supported protocols are 'smb' and 'nfs'")
-    
-    try:
-        subprocess.run(mount_command, shell=True, check=True)
-        print(f"{protocol.upper()} share mounted at {mount_point}")
-    except subprocess.CalledProcessError as e:
-        print(f"Error: {e}")
-
-# Example usage:
-# mount_network_share("smb://server/share", "/mnt/mountpoint", "smb", "username", "password")
-# mount_network_share("nfs://server/share", "/mnt/mountpoint", "nfs")
-
 
 
 
@@ -143,7 +166,7 @@ class SmbManager(tk.Frame):
         # Create a Text widget to display the messages
         text_box = tk.Text(top, width=longest_message_length + 5, height=10)
 
-#        text_box = tk.Text(top, width=50, height=10)
+#        text_box = ttk.Text(top, width=50, height=10)
         text_box.insert(tk.END, message_text)
         text_box.configure(state='disabled')  # Make the text box read-only
         text_box.pack(fill=tk.BOTH, expand=True)  # Pack the Text widget to fill the available space
@@ -203,76 +226,76 @@ class SmbManager(tk.Frame):
         self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.treeview.yview)
         self.scrollbar.grid(row=0, column=3, sticky="ns")
         self.treeview.configure(yscrollcommand=self.scrollbar.set)
-
-        self.share_label = tk.Label(self, text="Share Name:")
+#test
+        self.share_label = ttk.Label(self, text="Share Name:")
         self.share_label.grid(row=1, column=0, padx=5, pady=3, sticky="w")
-        self.share_entry = tk.Entry(self, width=50 )
+        self.share_entry = ttk.Entry(self, width=50 )
         self.share_entry.grid(row=1, column=0, padx=100, pady=3, sticky="w")
 
 
 
-        self.server_label = tk.Label(self, text="Server Name:")
+        self.server_label = ttk.Label(self, text="Server Name:")
         self.server_label.grid(row=2, column=0, padx=5, pady=3, sticky="w")
-        self.server_entry = tk.Entry(self, width=50)
+        self.server_entry = ttk.Entry(self, width=50)
         self.server_entry.grid(row=2, column=0, padx=100, pady=3, sticky="w")
 
-        self.user_label = tk.Label(self, text="Username:")
+        self.user_label = ttk.Label(self, text="Username:")
         self.user_label.grid(row=3, column=0, padx=5, pady=3, sticky="w")
-        self.user_entry = tk.Entry(self, width=50)
+        self.user_entry = ttk.Entry(self, width=50)
         self.user_entry.grid(row=3, column=0, padx=100, pady=3, sticky="w")
 
-        self.password_label = tk.Label(self, text="Password:")
+        self.password_label = ttk.Label(self, text="Password:")
         self.password_label.grid(row=4, column=0, padx=5, pady=3, sticky="w")
-        self.password_entry = tk.Entry(self, width=50, show="*")
+        self.password_entry = ttk.Entry(self, width=50, show="*")
         self.password_entry.grid(row=4, column=0, padx=100, pady=3, sticky="w")
 
 
-        self.mount_label = tk.Label(self, text="MountPoint:\n(Dbl-clk)",fg="blue",wraplength=80,justify="left")
+        self.mount_label = ttk.Label(self, text="MountPoint:\n(Dbl-clk)",foreground="blue",wraplength=80,justify="left")
         self.mount_label.grid(row=5, column=0, padx=5, pady=3, sticky="w")
-        self.mount_entry = tk.Entry(self, width=50)
+        self.mount_entry = ttk.Entry(self, width=50)
         self.mount_entry.grid(row=5, column=0, padx=100, pady=3, sticky="w")
         self.mount_entry.bind("<Double-Button-1>", lambda event: self.browse_mount())
 
         
 
 
-        self.auto_mount_label = tk.Label(self, text="Auto-mount:")
+        self.auto_mount_label = ttk.Label(self, text="Auto-mount:")
         self.auto_mount_label.grid(row=6, column=0, padx=5, pady=3, sticky="w")
-        self.auto_mount_entry = tk.Entry(self, width=50)
+        self.auto_mount_entry = ttk.Entry(self, width=50)
         self.auto_mount_entry.grid(row=6, column=0, padx=100, pady=3, sticky="w")
 
 
-        self.fstype_label = tk.Label(self, text="FSTYPE:")
+        self.fstype_label = ttk.Label(self, text="FSTYPE:")
         self.fstype_label.grid(row=7, column=0, padx=5, pady=3, sticky="w")
-        self.fstype_entry = tk.Entry(self, width=50)
+        self.fstype_entry = ttk.Entry(self, width=50)
         self.fstype_entry.grid(row=7, column=0, padx=100, pady=3, sticky="w")        
 
 
-        self.add_button = tk.Button(self, text="Add Mount", command=self.add_mount)
+        self.add_button = ttk.Button(self, text="Add Mount", command=self.add_mount)
         self.add_button.grid(row=9, column=0, padx=5, pady=3, sticky="w")
 
 
-        self.edit_button = tk.Button(self, text="Edit Mount", command=self.edit_mount)
+        self.edit_button = ttk.Button(self, text="Edit Mount", command=self.edit_mount)
         self.edit_button.grid(row=9, column=0, padx=150, pady=3, sticky="w")        
 
-        self.delete_button = tk.Button(self, text="Delete Mount", command=self.delete_mount)
+        self.delete_button = ttk.Button(self, text="Delete Mount", command=self.delete_mount)
         self.delete_button.grid(row=9, column=0, padx=300, pady=3, sticky="w")
 
-        self.mount_button = tk.Button(self, text="Mount", command=self.mount)
+        self.mount_button = ttk.Button(self, text="Mount", command=self.mount)
         self.mount_button.grid(row=10, column=0, padx=5, pady=3, sticky="w")
 
-        self.save_button = tk.Button(self, text="Save Mounts", command=self.save_mounts)
+        self.save_button = ttk.Button(self, text="Save Mounts", command=self.save_mounts)
         self.save_button.grid(row=10, column=0,  padx=150, pady=3, sticky="w")
 
-        self.duplicate_button = tk.Button(self, text="Duplicate Mount", command=self.duplicate_mount)
+        self.duplicate_button = ttk.Button(self, text="Duplicate Mount", command=self.duplicate_mount)
         self.duplicate_button.grid(row=10, column=0, padx=300, pady=3, sticky="w")
 
 
 
-        self.unmount_button = tk.Button(self, text="Unmount", command=self.unmount)
+        self.unmount_button = ttk.Button(self, text="Unmount", command=self.unmount)
         self.unmount_button.grid(row=11, column=0, padx=5, pady=3, sticky="w")
 
-        self.test_button = tk.Button(self, text="Test", command=self.test)
+        self.test_button = ttk.Button(self, text="Test", command=self.test)
         self.test_button.grid(row=11, column=0, padx=150, pady=3, sticky="w")
 
 
@@ -306,7 +329,7 @@ class SmbManager(tk.Frame):
 
     def browse_mount(self):
         if mount_path := filedialog.askdirectory():
-            self.mount_entry.delete(0, tk.END)
+            self.mount_entry.delete(0,  tk.END)
             self.mount_entry.insert(0, mount_path)
 
     def add_mount(self):
@@ -328,25 +351,25 @@ class SmbManager(tk.Frame):
             item = self.treeview.item(selection) # type: ignore
             values = item["values"]
 
-            self.share_entry.delete(0, tk.END)
+            self.share_entry.delete(0,  tk.END)
             self.share_entry.insert(0, values[0])
 
-            self.server_entry.delete(0, tk.END)
+            self.server_entry.delete(0,  tk.END)
             self.server_entry.insert(0, values[1])
 
-            self.user_entry.delete(0, tk.END)
+            self.user_entry.delete(0,  tk.END)
             self.user_entry.insert(0, values[2])
 
-            self.password_entry.delete(0, tk.END)
+            self.password_entry.delete(0,  tk.END)
             self.password_entry.insert(0, values[3])
 
-            self.mount_entry.delete(0, tk.END)
+            self.mount_entry.delete(0,  tk.END)
             self.mount_entry.insert(0, values[4])
 
-            self.auto_mount_entry.delete(0, tk.END)
+            self.auto_mount_entry.delete(0,  tk.END)
             self.auto_mount_entry.insert(0, values[5])
 
-            self.fstype_entry.delete(0, tk.END)
+            self.fstype_entry.delete(0,  tk.END)
             self.fstype_entry.insert(0, values[6])          
 
             self.delete_mount()
@@ -398,10 +421,16 @@ class SmbManager(tk.Frame):
             beepsad()
             return
         try:
-            mount_network_share(share, server_name, mount_point, fstype, user, password)
+            mount_network_share(share, server_name, mount_point, fstype, user, password, auto_mount=True)
             beephappy()
             #messagebox.showinfo("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' was successful.")
             self.add_message(f"The {fstype} mount for '{server_name}:{share} {mount_point}' was successful.")
+        except ValueError as e:
+            #self.add_message(f"There was an error mounting {share} : {e}.")
+            self.add_message(f"The {fstype} mount for '{server_name}:{share}' failed with error: {e}.")
+            beepsad()
+        except SystemError:
+            messagebox.showerror(f"{e}")
 
         except Exception:
             #os.system('afplay /System/Library/Sounds/Basso.aiff')
@@ -410,45 +439,11 @@ class SmbManager(tk.Frame):
             #messagebox.showerror("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' failed with an error: ")
 
 
-
-
-    def do_auto_mount_0(self,values):
-        share, server_name, user, password, mount_point, auto_mount, fstype = values.split(",")
-        if not os.path.ismount(mount_point):
-            if not os.path.exists(mount_point):
-                if create_dir := messagebox.askyesno(
-                    "Mount",
-                    f"The MountPoint directory '{mount_point}' for '{share}' does not exist. Do you want to create it?",
-                ):
-                    os.makedirs(mount_point)
-            if os.path.exists(mount_point):
-                try:
-                    if fstype.upper() == "NFS":
-                        mount_command = f"mount -t nfs -o vers=4.0 {server_name}:{share} {mount_point}"
-                    elif fstype.upper() == "SMB":
-                        mount_command = f"mount -t smbfs //{user}:{password}@{server_name}/{share} {mount_point}"
-                    else:
-                        self.add_message(f"The {fstype} mount for '{server_name}:{share} {mount_point}' is not supported.")
-                        return
-                    subprocess.run(mount_command, shell=True, check=True)
-                    #os.system('afplay /System/Library/Sounds/Tink.aiff')
-                    beephappy()
-                    self.add_message(f"The {fstype} mount for '{server_name}:{share} {mount_point}' was successful.")
-                except subprocess.CalledProcessError as e:
-                    os.system('afplay /System/Library/Sounds/Basso.aiff')
-                    self.add_message(f"The {fstype} mount for '{server_name}:{share}' failed with error: {e}.")
-            else:
-                os.system('afplay /System/Library/Sounds/Basso.aiff')
-        else:
-            self.add_message(f"The MountPoint directory '{mount_point}' for '{share}' already exists and is mounted.")
-            os.system('afplay /System/Library/Sounds/Tink.aiff')
-
         
     def mount(self):
         selection = self.treeview.selection()
         if not selection:
             messagebox.showerror("Mount", "Please select a mount to execute.")
-
             return
 
         item = self.treeview.item(selection)  # type: ignore
@@ -474,67 +469,27 @@ class SmbManager(tk.Frame):
                     return
 
         if not os.path.exists(mount_point):
-            #os.system('afplay /System/Library/Sounds/Basso.aiff')
             beepsad()
             return
 
         try:
-            mount_network_share(share, server_name, mount_point, fstype, user=None, password=None)
+            mount_network_share(share, server_name, mount_point, fstype, user, password,auto_mount=False)
             beephappy()
             messagebox.showinfo("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' was successful.")
-        except Exception:
-            #os.system('afplay /System/Library/Sounds/Basso.aiff')
+        except ValueError as e:
             beepsad()
-            messagebox.showerror("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' failed with an error: ")
+            messagebox.showerror("Mount Error ValueError",f"{e}")
+        except SystemError as e:
+            beepsad()
+            messagebox.showerror("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' failed with an error: {e}")            
+        except Exception:
+            beepsad()
+            messagebox.showerror("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' failed with an error: {e}")
 
 
 
 
 
-    def mount_0(self):
-        selection = self.treeview.selection()
-
-        if not selection:
-            messagebox.showerror("Mount", "Please select a mount to execute.")
-            return
-
-        item = self.treeview.item(selection) # type: ignore
-        values = item["values"]
-        share, server_name, user, password, mount_point, auto_mount, fstype = values
-        if not os.path.ismount(mount_point):
-            if not os.path.exists(mount_point):
-                if create_dir := messagebox.askyesno(
-                    "Mount",
-                    f"The MountPoint directory '{mount_point}' for '{share}' does not exist. Do you want to create it?",
-                ):
-                    os.makedirs(mount_point)
-            if os.path.exists(mount_point):
-                try:
-                    if fstype.upper() == "NFS":
-                        mount_command = f"mount -t nfs -o vers=4.0 {server_name}:{share} {mount_point}"
-                    elif fstype.upper() == "SMB":
-                        mount_command = f"mount -t smbfs //{user}:{password}@{server_name}/{share} {mount_point}"
-                    else:
-                        messagebox.showerror("Mount", f"Unsupported file system type: {fstype}")
-
-                        return
-                    subprocess.run(mount_command, shell=True, check=True)
-                    #os.system('afplay /System/Library/Sounds/Tink.aiff')
-                    beephappy()
-                    messagebox.showinfo("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' was successful.")
-
-                except subprocess.CalledProcessError as e:
-                    #os.system('afplay /System/Library/Sounds/Basso.aiff')
-                    beepsad()
-                    messagebox.showerror("Mount", f"The mount for '{server_name}:{share}' to '{mount_point}' failed with error: {e}")
-
-            else:
-                #os.system('afplay /System/Library/Sounds/Basso.aiff')
-                beepsad()
-        else:
-            messagebox.showinfo("Mount", f"The directory '{mount_point}' is already mounted.")    
-
-    
     
 
     def unmount(self):
@@ -557,11 +512,11 @@ class SmbManager(tk.Frame):
             messagebox.showerror("Unmount", "Please select a mount to execute.")
 
     def clear_entries(self):
-        self.share_entry.delete(0, tk.END)
-        self.server_entry.delete(0, tk.END)
-        self.user_entry.delete(0, tk.END)
-        self.password_entry.delete(0, tk.END)
-        self.mount_entry.delete(0, tk.END)
+        self.share_entry.delete(0,  tk.END)
+        self.server_entry.delete(0,  tk.END)
+        self.user_entry.delete(0,  tk.END)
+        self.password_entry.delete(0,  tk.END)
+        self.mount_entry.delete(0,  tk.END)
         self.auto_mount_entry.delete(0,tk.END)
         self.fstype_entry.delete(0,tk.END)
 
