@@ -59,13 +59,11 @@ def get_supported_systems_for_protocol(configurations, protocol):
 
     # Get the systems that support the specified protocol
     supported_systems = list(configurations[protocol.lower()].keys())
-    systems_str = ", ".join(supported_systems)
-
-    return systems_str
+    return ", ".join(supported_systems)
 
 def mount_network_share(share, server_name, mount_point, protocol, user, password, auto_mount=False):
     system = platform.system().lower()
-    
+
     # Define configurations for different protocols and operating systems
     configurations = {
         "smb": {
@@ -78,7 +76,7 @@ def mount_network_share(share, server_name, mount_point, protocol, user, passwor
             "linux": f"mount -t nfs {server_name}:{share} {mount_point}"
         }
     }
-    
+
     # Check if the protocol is supported
     if protocol.lower() not in configurations:
          # Get the keys (protocols) from the top-level dictionary
@@ -86,18 +84,18 @@ def mount_network_share(share, server_name, mount_point, protocol, user, passwor
         # Create a comma-separated string of supported protocols
         protocols_str = ", ".join(supported_protocols)     
         raise ValueError(f"Unsupported protocol {protocol}. Supported protocols are: {protocols_str}.")
-    
+
     # Check if the system is supported for the given protocol
     #supported_systems = get_supported_systems_for_protocol(configurations, protocol)
 
-  
+
     if system not in configurations[protocol.lower()]:
         # Get the systems for the specified protocol
         # Get the values to the left of ":" (e.g., "darwin", "linux")
         supported_systems = get_supported_systems_for_protocol(configurations, protocol)
         raise ValueError(f"Unsupported system {system}. Supported Systems are: {supported_systems}.")
         #raise NotImplementedError(f"Unsupported operating system: {system}")
-    
+
     mount_command = configurations[protocol.lower()][system]
 
     try:
@@ -107,10 +105,10 @@ def mount_network_share(share, server_name, mount_point, protocol, user, passwor
         #show_message(f"{mount_command} failed with Error: {e}")
         if e.returncode == 64:
             error_str = f"The Network share is no longer availble {share} : {e}"
-            raise SystemError (f"Error: {error_str}")
         else:
             error_str = f"{e}"
-            raise SystemError (f"Error: {error_str}")
+
+        raise SystemError (f"Error: {error_str}") from e
 
 
 # Example usage:
