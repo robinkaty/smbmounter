@@ -8,6 +8,7 @@
 # the main grid is displayed.
 # refactored some code in the mount and automount functions
 # consolidated the  mounting to  mount_network_share
+#  12/11/2023 4:34PM
 #  brew intall python3
 #  brew install python-tk@3.11
 #  brew install python-gdbm@3.11
