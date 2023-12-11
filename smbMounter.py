@@ -8,7 +8,10 @@
 # the main grid is displayed.
 # refactored some code in the mount and automount functions
 # consolidated the  mounting to  mount_network_share
-
+#  brew intall python3
+#  brew install python-tk@3.11
+#  brew install python-gdbm@3.11
+#  pip3 install tk
 
 from typing import Union
 import tkinter as tk
