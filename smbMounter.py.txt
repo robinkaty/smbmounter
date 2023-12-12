@@ -1,0 +1,4 @@
+rgranger,macmac,rgranger,bourne,/Users/rgranger/mnt/macmac,M,SMB
+media,freenas,rgranger,bourne,/Users/rgranger/mnt/media,M,SMB
+/mnt/tank/vmparallels/rmp2,freenas,rgranger,bourne,/Users/rgranger/mnt/rmp2,M,NFS
+depot,freenas,rgranger,bourne,/Users/rgranger/mnt/depot,A,SMB
